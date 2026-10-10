@@ -1,0 +1,32 @@
+const { app, BrowserWindow } = require('electron');
+
+function createWindow () {
+  const win = new BrowserWindow({
+    width: 1100,
+    height: 750,
+    autoHideMenuBar: true, // Hides the top toolbar for a clean app look
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
+  });
+
+  // Load your HTML file
+  win.loadFile('index.html');
+}
+
+app.whenReady().then(() => {
+  createWindow();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});

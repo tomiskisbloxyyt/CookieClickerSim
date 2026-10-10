@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Google Sites Cookie Clicker Deluxe</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #f59e0b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        *, *:before, *:after { box-sizing: inherit; }
+        
+        .sidebar {
+            width: 380px;
+            background: var(--card-bg);
+            border-left: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        h1 { font-size: 2.3rem; margin: 0 0 5px 0; color: var(--accent); text-shadow: 0 0 15px rgba(245, 158, 11, 0.3); }
+        .stats { font-size: 1.1rem; margin-bottom: 30px; text-align: center; }
+        
+        .cookie-container {
+            position: relative;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.08s ease;
+        }
+        .cookie-container:active { transform: scale(0.92); }
+        .cookie {
+            width: 220px;
+            height: 220px;
+            background: radial-gradient(circle at 35% 35%, #d97706, #b45309);
+            border-radius: 50%;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5), inset 0 -12px 20px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 100px;
+            border: 4px solid #78350f;
+        }
+        
+        .shop-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 10px; border-bottom: 2px solid #334155; padding-bottom: 6px; color: var(--accent); }
+        .upgrade-list { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+        .upgrade-btn {
+            background: #334155; border: none; color: white; padding: 10px 12px; border-radius: 8px; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .upgrade-btn:hover:not(:disabled) { background: #475569; transform: translateY(-1px); }
+        .upgrade-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .upgrade-info .name { font-weight: bold; font-size: 0.9rem; display: block; }
+        .upgrade-info .desc { font-size: 0.75rem; color: var(--text-muted); }
+        .upgrade-cost { font-weight: bold; color: var(--accent); font-size: 0.95rem; }
+
+        /* Floating Click Numbers */
+        .float-text {
+            position: absolute; font-weight: bold; color: var(--accent); pointer-events: none; animation: floatUp 0.7s ease-out forwards; font-size: 1.5rem; text-shadow: 0 0 5px rgba(0,0,0,0.8);
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-70px) scale(1.3); }
+        }
+
+        /* Popup Notification Toast Container */
+        #toastContainer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 100;
+            pointer-events: none;
+        }
+        .toast {
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid var(--accent);
+            color: var(--text);
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease-out forwards;
+            transition: opacity 0.3s ease;
+        }
+        @keyframes slideIn {
+            0% { opacity: 0; transform: translateX(-30px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Hidden Admin Terminal styling */
+        #adminTerminal {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 420px;
+            background: #000000;
+            color: #00ffcc;
+            border: 2px solid #00ffcc;
+            font-family: monospace;
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 9999;
+            box-shadow: 0 0 25px rgba(0,255,204,0.4);
+        }
+        #termOutput {
+            height: 140px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            font-size: 0.82rem;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toastContainer"></div>
+
+    <!-- Hidden Admin Terminal (Toggle with F2) -->
+    <div id="adminTerminal">
+        <div style="font-size: 0.75rem; color: #888; margin-bottom: 5px;">[Admin Terminal - Press F2 to Close. If your not a developer, please exit.]</div>
+        <div id="termOutput"></div>
+        <div style="display: flex; align-items: center; gap: 5px;">
+            <span style="white-space: nowrap; color: #ff00ff;">unknown @ commandr:</span>
+            <input type="text" id="termInput" style="background: transparent; border: none; color: #00ffcc; outline: none; font-family: monospace; width: 100%; font-size: 0.9rem;" autocomplete="off" autofocus>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="stats">
+            <h1 id="cookieCount">0 Cookies</h1>
+            <div id="cpsCount" style="color: var(--text-muted);">per second: 0</div>
+        </div>
+        
+        <div class="cookie-container" id="bigCookie">
+            <div class="cookie">🍪</div>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="shop-title">Bakery Upgrades (Manual Buy)</div>
+        <div class="upgrade-list" id="upgradeList"></div>
+    </div>
+
+    <script>
+        // Game State
+        let game = {
+            cookies: 0,
+            cps: 0,
+            upgrades: {
+                cursor: { name: "Cursor", desc: "Auto-clicks", cost: 15, cps: 1, count: 0, costScale: 1.15 },
+                grandma: { name: "Grandma", desc: "Bakes nicely", cost: 100, cps: 4, count: 0, costScale: 1.15 },
+                oven: { name: "Industrial Oven", desc: "Fast batches", cost: 1100, cps: 32, count: 0, costScale: 1.15 },
+                factory: { name: "Cookie Factory", desc: "Mass production", cost: 12000, cps: 260, count: 0, costScale: 1.15 },
+                mine: { name: "Chocolate Mine", desc: "Deep extraction", cost: 130000, cps: 1400, count: 0, costScale: 1.15 },
+                wizard: { name: "Wizard Tower", desc: "Spells cookies", cost: 1400000, cps: 7800, count: 0, costScale: 1.15 },
+                shipment: { name: "Cookie Shipment", desc: "Space imports", cost: 20000000, cps: 44000, count: 0, costScale: 1.15 }
+            }
+        };
+
+        // Web Audio Synthesizer
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                if (type === 'click') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(350, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(700, audioCtx.currentTime + 0.04);
+                    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.04);
+                } else if (type === 'buy') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(660, audioCtx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.18);
+                } else if (type === 'notify') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(750, audioCtx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.25);
+                }
+            } catch(e) {}
+        }
+
+        // Toast Notification System
+        function showNotification(message) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `✨ <strong>${message}</strong>`;
+            container.appendChild(toast);
+            playSound('notify');
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Load progress
+        if(localStorage.getItem('googleSitesCookieSave')) {
+            try {
+                let saved = JSON.parse(localStorage.getItem('googleSitesCookieSave'));
+                game.cookies = saved.cookies || 0;
+                if(saved.upgrades) {
+                    for(let key in saved.upgrades) {
+                        if(game.upgrades[key]) {
+                            game.upgrades[key].count = saved.upgrades[key].count || 0;
+                            game.upgrades[key].cost = saved.upgrades[key].cost || game.upgrades[key].cost;
+                        }
+                    }
+                }
+                calculateCPS();
+            } catch(e) {}
+        }
+
+        function saveGame() {
+            localStorage.setItem('googleSitesCookieSave', JSON.stringify(game));
+        }
+
+        function calculateCPS() {
+            let total = 0;
+            for(let key in game.upgrades) {
+                total += game.upgrades[key].count * game.upgrades[key].cps;
+            }
+            game.cps = total;
+        }
+
+        // Manual Click Handler
+        const bigCookie = document.getElementById('bigCookie');
+        bigCookie.addEventListener('click', (e) => {
+            game.cookies += 1;
+            playSound('click');
+            updateDisplay();
+            
+            const floatText = document.createElement('div');
+            floatText.className = 'float-text';
+            floatText.innerText = '+1';
+            floatText.style.left = `${e.clientX}px`;
+            floatText.style.top = `${e.clientY}px`;
+            document.body.appendChild(floatText);
+            setTimeout(() => floatText.remove(), 700);
+        });
+
+        // Manual Level/Upgrade Purchase (Takes away cookies explicitly)
+        function buyUpgrade(key) {
+            let up = game.upgrades[key];
+            if(game.cookies >= up.cost) {
+                game.cookies -= up.cost; 
+                up.count += 1;
+                up.cost = Math.floor(up.cost * up.costScale); 
+                calculateCPS();
+                playSound('buy');
+                showNotification(`${up.name} Level Up!`);
+                updateShop();
+                updateDisplay();
+                saveGame();
+            }
+        }
+
+        // Render Shop UI
+        const upgradeListEl = document.getElementById('upgradeList');
+        function renderShop() {
+            upgradeListEl.innerHTML = '';
+            for(let key in game.upgrades) {
+                let up = game.upgrades[key];
+                let btn = document.createElement('button');
+                btn.className = 'upgrade-btn';
+                btn.id = `upgrade-${key}`;
+                btn.onclick = () => buyUpgrade(key);
+                btn.innerHTML = `
+                    <div class="upgrade-info">
+                        <span class="name">${up.name} (Lvl ${up.count})</span>
+                        <span class="desc">+${up.cps.toLocaleString()} CPS</span>
+                    </div>
+                    <div class="upgrade-cost">🍪 ${up.cost.toLocaleString()}</div>
+                `;
+                upgradeListEl.appendChild(btn);
+            }
+        }
+
+        function updateShop() {
+            for(let key in game.upgrades) {
+                let up = game.upgrades[key];
+                let btn = document.getElementById(`upgrade-${key}`);
+                if(btn) {
+                    btn.querySelector('.name').innerText = `${up.name} (Lvl ${up.count})`;
+                    btn.querySelector('.upgrade-cost').innerText = `🍪 ${up.cost.toLocaleString()}`;
+                    btn.disabled = game.cookies < up.cost;
+                }
+            }
+        }
+
+        const cookieCountEl = document.getElementById('cookieCount');
+        const cpsCountEl = document.getElementById('cpsCount');
+        function updateDisplay() {
+            cookieCountEl.innerText = `${Math.floor(game.cookies).toLocaleString()} Cookies`;
+            cpsCountEl.innerText = `per second: ${game.cps.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1})}`;
+            updateShop();
+        }
+
+        // --- Admin Terminal Logic ---
+        const adminTerminal = document.getElementById('adminTerminal');
+        const termInput = document.getElementById('termInput');
+        const termOutput = document.getElementById('termOutput');
+        let awaitingResetConfirm = false;
+
+        function appendTerm(txt) {
+            const div = document.createElement('div');
+            div.innerText = txt;
+            termOutput.appendChild(div);
+            termOutput.scrollTop = termOutput.scrollHeight;
+        }
+
+        // Toggle with F2
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'F2') {
+                e.preventDefault();
+                if (adminTerminal.style.display === 'none' || adminTerminal.style.display === '') {
+                    adminTerminal.style.display = 'block';
+                    termInput.focus();
+                } else {
+                    adminTerminal.style.display = 'none';
+                }
+            }
+        });
+
+        termInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                let line = termInput.value.trim();
+                termInput.value = '';
+                appendTerm(`unknown @ commandr: ${line}`);
+
+                if (awaitingResetConfirm) {
+                    if (line.toLowerCase() === 'yes') {
+                        game.cookies = 0;
+                        game.cps = 0;
+                        for(let key in game.upgrades) {
+                            game.upgrades[key].count = 0;
+                            // reset base costs roughly
+                            if(key === 'cursor') game.upgrades[key].cost = 15;
+                            if(key === 'grandma') game.upgrades[key].cost = 100;
+                            if(key === 'oven') game.upgrades[key].cost = 1100;
+                            if(key === 'factory') game.upgrades[key].cost = 12000;
+                            if(key === 'mine') game.upgrades[key].cost = 130000;
+                            if(key === 'wizard') game.upgrades[key].cost = 1400000;
+                            if(key === 'shipment') game.upgrades[key].cost = 20000000;
+                        }
+                        saveGame();
+                        renderShop();
+                        updateDisplay();
+                        showNotification("Congratulations!🍪 You beat the game!🎉 Progress was reset");
+                        appendTerm("Command Executed.");
+                    } else if (line.toLowerCase() === 'no') {
+                        appendTerm("Data reset cancelled");
+                        appendTerm("Command Executed.");
+                    } else {
+                        appendTerm("Something went wrong");
+                        appendTerm("Command Executed.");
+                    }
+                    awaitingResetConfirm = false;
+                    return;
+                }
+
+                // Command parsing
+                if (line.startsWith('givecookies ')) {
+                    let parts = line.split(' ');
+                    let amount = parseInt(parts[1]);
+                    if (!isNaN(amount)) {
+                        game.cookies += amount;
+                        updateDisplay();
+                        saveGame();
+                        showNotification(`${amount.toLocaleString()} Cookies Reached!`);
+                        appendTerm("Command Executed.");
+                    } else {
+                        appendTerm("Something went wrong");
+                        appendTerm("Command Executed.");
+                    }
+                } else if (line === 'resetdata') {
+                    awaitingResetConfirm = true;
+                    appendTerm("Are you sure?: yes or no");
+                } else if (line === 'help') {
+                    appendTerm("Every Command: givecookies <cookie-amount>, resetdata, help");
+                    appendTerm("Command Executed.");
+                } else {
+                    appendTerm("Something went wrong");
+                    appendTerm("Command Executed.");
+                }
+            }
+        });
+
+        // Game Loop
+        let lastTick = Date.now();
+        setInterval(() => {
+            let now = Date.now();
+            let delta = (now - lastTick) / 1000;
+            lastTick = now;
+            
+            if(game.cps > 0) {
+                game.cookies += game.cps * delta;
+                updateDisplay();
+            }
+        }, 100);
+
+        setInterval(saveGame, 5000);
+
+        renderShop();
+        updateDisplay();
+    </script>
+</body>
+</html>
